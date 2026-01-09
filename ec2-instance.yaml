@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Simple CloudFormation template to create an EC2 instance with an SSH security group.
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair for SSH access (leave blank to skip attaching a key)
+    Type: String
+    Default: ""
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+  ImageId:
+    Description: Optional AMI ID to use for the instance (overrides region mapping when provided)
+    Type: String
+    Default: ""
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyName, ""]]
+  HasImageId: !Not [!Equals [!Ref ImageId, ""]]
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-0c02fb55956c7d316
+    us-east-2:
+      AMI: ami-0a887e401f7654935
+    us-west-1:
+      AMI: ami-0bdb828fd58c52235
+    us-west-2:
+      AMI: ami-0a887e401f7654935
+    eu-west-1:
+      AMI: ami-08569b978cc4dfa10
+    eu-central-1:
+      AMI: ami-0f2b4fc905b0bd1f1
+    ap-south-1:
+      AMI: ami-0915e09cc7ceee3ab
+    ap-southeast-1:
+      AMI: ami-08569b978cc4dfa10
+    ap-northeast-1:
+      AMI: ami-06cd52961ce9f0d85
+    sa-east-1:
+      AMI: ami-07b14488da8ea02a0
+
+Resources:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !If [HasImageId, !Ref ImageId, !FindInMap [RegionMap, !Ref AWS::Region, AMI]]
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      KeyName: !If [HasKeyName, !Ref KeyName, !Ref AWS::NoValue]
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref EC2Instance
+  PublicIp:
+    Description: Public IP of the instance
+    Value: !GetAtt EC2Instance.PublicIp
